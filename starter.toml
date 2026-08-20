@@ -1,0 +1,58 @@
+# aski — one-shot questions for command-line LLMs.
+#
+#   aski how do I find files modified in the last day
+#   aski gemini what does the --depth flag do
+#
+# The first argument selects an LLM. If it matches no [llm.*] table name and no
+# alias, it is treated as the start of the question and `default` is used.
+#
+# Each `command` is spawned directly — no shell — so each element is one argv
+# entry and needs no quoting beyond TOML's own. Two placeholders are substituted
+# anywhere they appear:
+#
+#   {prompt}    the question (required somewhere in every command)
+#   {context}   this LLM's `context` text (optional; if the command has no
+#               {context}, the context is prepended to the question instead)
+#
+# Other keys per LLM:
+#
+#   aliases      extra selectors, for shorter typing
+#   neutral_dir  run in an empty temporary directory (default true) so the LLM
+#                does not pick up whatever project you are standing in
+
+default = "claude"
+
+[llm.claude]
+aliases = ["c"]
+command = [
+    "claude",
+    "-p",
+    "--model", "haiku",
+    "--append-system-prompt", "{context}",
+    "{prompt}",
+]
+context = """
+You answer quick terminal and command-line questions for an expert user. Lead \
+with the exact command. Keep it to a few lines. No preamble, no 'Here is', no \
+closing summary. Assume Debian Linux and bash unless told otherwise. This is a \
+one-shot tool with no follow-up: if the question is ambiguous, give the single \
+most likely answer instead of asking."""
+
+# More LLMs, uncommented and adjusted to whatever you have installed. Each of
+# these carries the context in the prompt rather than in a flag, so no
+# {context} placeholder appears in the command.
+#
+# [llm.gemini]
+# aliases = ["g"]
+# command = ["gemini", "-m", "gemini-2.5-flash", "-p", "{prompt}"]
+# context = "Answer in a few lines. Lead with the exact command."
+#
+# [llm.codex]
+# command = ["codex", "exec", "--skip-git-repo-check", "{prompt}"]
+# context = "Answer in a few lines. Lead with the exact command."
+#
+# [llm.ollama]
+# aliases = ["o"]
+# command = ["ollama", "run", "llama3.2", "{prompt}"]
+# context = "Answer in a few lines. Lead with the exact command."
+# neutral_dir = false
