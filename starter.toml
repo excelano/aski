@@ -6,6 +6,10 @@
 # The first argument selects an LLM. If it matches no [llm.*] table name and no
 # alias, it is treated as the start of the question and `default` is used.
 #
+# A script should not rely on that guess: `aski --llm <name>` fails on a name
+# this file does not configure, rather than folding it into the question. See
+# `aski --help` for that and the rest of the per-run flags.
+#
 # Each `command` is spawned directly — no shell — so each element is one argv
 # entry and needs no quoting beyond TOML's own. Two placeholders are substituted
 # anywhere they appear:

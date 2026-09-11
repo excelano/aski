@@ -132,11 +132,12 @@ impl Config {
 }
 
 impl Llm {
-    /// The argv to spawn, with both placeholders filled in.
-    pub fn argv(&self, prompt: &str) -> Vec<String> {
+    /// The argv to spawn, with both placeholders filled in. The context is
+    /// passed in rather than read from the table, so a run can override it.
+    pub fn argv(&self, prompt: &str, context: &str) -> Vec<String> {
         self.command
             .iter()
-            .map(|arg| arg.replace(PROMPT, prompt).replace(CONTEXT, &self.context))
+            .map(|arg| arg.replace(PROMPT, prompt).replace(CONTEXT, context))
             .collect()
     }
 
@@ -214,13 +215,16 @@ mod tests {
         let config = parse(TWO).unwrap();
         let alpha = config.select("alpha").unwrap().1;
         assert_eq!(
-            alpha.argv("why"),
+            alpha.argv("why", &alpha.context),
             ["a", "--sys", "be terse", "why"].map(String::from)
         );
         assert!(alpha.context_in_command());
 
         let beta = config.select("beta").unwrap().1;
-        assert_eq!(beta.argv("why"), ["b", "why"].map(String::from));
+        assert_eq!(
+            beta.argv("why", &beta.context),
+            ["b", "why"].map(String::from)
+        );
         assert!(!beta.context_in_command());
     }
 
@@ -235,7 +239,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            config.default_llm().1.argv("why"),
+            config.default_llm().1.argv("why", ""),
             ["a", "Question: why"].map(String::from)
         );
     }

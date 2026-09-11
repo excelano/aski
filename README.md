@@ -99,11 +99,52 @@ somecommand --help | aski what does the --depth flag do
 git log --oneline -20 | aski summarize what changed here
 ```
 
-The piped text is appended below the typed question. When stdin is a pipe, `aski` drains it before starting the LLM, so avoid running it non-interactively with an inherited stdin that never closes.
+The piped text is appended below the typed question. When stdin is a pipe, `aski` drains it before starting the LLM, so an inherited stdin that never closes will hang a non-interactive run; `--no-stdin` is the way out of that.
 
-The remaining options are `--list`, which prints the configured LLMs and the command each one runs, plus the usual `-h`/`--help` and `-V`/`--version`. All four are recognized only as the first argument, so `aski what does --help do` asks the question rather than printing usage.
+Options lead. Parsing stops at the first word that is not a flag, so a flag inside a question is still question text and `aski what does --help do` asks rather than printing usage. A question that genuinely starts with a dash needs `--` in front of it, the same escape that stops the first word from selecting an LLM.
+
+```sh
+aski -- --depth is a flag of what
+```
+
+`--list` prints the configured LLMs and the command each one runs, and `-h`/`--help` and `-V`/`--version` do the obvious thing. Each of those answers the invocation by itself, so none can be combined with a question.
 
 Quoting is needed only for the shell's sake — a question containing `?`, `*`, `|`, `>`, `$`, or an apostrophe still has to be quoted, because `aski` never sees those characters otherwise.
+
+## In a script
+
+Everything that makes aski pleasant to type makes it ambiguous to call from a script. The first word may or may not select an LLM, a mistyped LLM name silently becomes part of the question instead of failing, and a question read out of a variable is text nobody inspected. These flags take the guessing out.
+
+```sh
+answer=$(aski --llm claude --timeout 60s -- "$question")
+```
+
+`-l`/`--llm` names the LLM outright. It fails when the name is not configured rather than folding it into the question the way a first word does, and it stops the first word from being read as a selector at all. `ASKI_LLM` does the same job from the environment, with one difference: it replaces the config's `default` rather than suppressing positional selection, so a script that wants no guessing anywhere should use the flag or `--`.
+
+`--timeout` bounds the wait. A bare number is seconds, and `90s`, `2m` and `1h` spell it out. The LLM is killed when the limit passes and aski exits 124. Only the LLM's own process is signalled, so one that spawns children of its own can leave them behind.
+
+`--no-stdin` refuses standard input, both as context for the question and as a handle for the LLM. aski otherwise reads stdin whenever it is not a terminal, which is right at a prompt and a hang waiting to happen in a script or a service whose inherited stdin never closes.
+
+`--context` replaces the LLM's standing context for one run and `--no-context` drops it, so a single configured LLM can answer in whatever voice a given script needs. An LLM whose command carries the context in a `{context}` placeholder cannot run without one, and says so rather than passing an empty argument along.
+
+`--here` runs the LLM in the current directory and `--neutral-dir` forces the empty temporary one, either way overriding that LLM's `neutral_dir` setting.
+
+`-n`/`--dry-run` prints the command aski would run, shell-quoted on one line, and stops. It reads stdin and builds the prompt first, so the line it prints is the one that would have been spawned.
+
+### Exit codes
+
+aski is a wrapper, so it borrows the convention `timeout(1)` and `env(1)` use: the LLM's own exit code passes through untouched, and aski's own troubles land in the high band above it.
+
+| Code    | Meaning |
+|---------|---------|
+| 0-123   | the LLM's exit code, passed through |
+| 124     | the LLM was killed by `--timeout` |
+| 125     | aski itself failed: no config, an unknown option, an LLM name that is not configured |
+| 126     | the LLM's command was found but could not be run |
+| 127     | the LLM's command was not found |
+| 128+n   | the LLM was killed by signal n |
+
+An LLM that exits 124 through 127 of its own accord is indistinguishable from aski reporting one of those, which is the same ambiguity `timeout(1)` documents and lives with.
 
 ## Configuring an LLM
 
@@ -132,16 +173,18 @@ neutral_dir = false
 
 `command` is argv, spawned directly with no shell in between, so each element is one argument and needs no quoting beyond TOML's own. Two placeholders are substituted anywhere they appear, including inside a longer string such as `"Question: {prompt}"`.
 
-| Key           | Required | Meaning |
-|---------------|----------|---------|
-| `command`     | yes      | argv for the LLM. At least one element must contain `{prompt}`. |
-| `context`     | no       | Standing text sent with every question. |
-| `aliases`     | no       | Extra selectors, for shorter typing. |
-| `neutral_dir` | no       | Run in an empty temporary directory. Defaults to true. |
+| Key           | Required | Meaning | Overridden per run by |
+|---------------|----------|---------|-----------------------|
+| `command`     | yes      | argv for the LLM. At least one element must contain `{prompt}`. | — |
+| `context`     | no       | Standing text sent with every question. | `--context`, `--no-context` |
+| `aliases`     | no       | Extra selectors, for shorter typing. | — |
+| `neutral_dir` | no       | Run in an empty temporary directory. Defaults to true. | `--here`, `--neutral-dir` |
+
+A table is what an LLM does by default; the flags in the last column change it for one run, which is how a script gets what it needs without a second table.
 
 Where the context goes depends on the command. If any element contains `{context}`, the context is substituted there, which is how you reach a flag like `--append-system-prompt`. If no element does, the context is prepended to the question with a blank line between, which works for any LLM that takes only a bare prompt.
 
-`neutral_dir` exists because some LLM CLIs walk up from the working directory looking for project instructions. A one-shot terminal question should not drag in whatever repository you happen to be standing in, so by default the LLM runs in an empty temporary directory that is removed when it exits. Turn it off for an LLM whose configuration lives in the directory you are in.
+`neutral_dir` exists because some LLM CLIs walk up from the working directory looking for project instructions. A one-shot terminal question should not drag in whatever repository you happen to be standing in, so by default the LLM runs in an empty temporary directory that is removed when it exits. Turn it off for an LLM whose configuration lives in the directory you are in, or override it either way with `--here` and `--neutral-dir`.
 
 Configuration errors are caught before anything is spawned: a `default` that names no table, a `command` with no `{prompt}`, a `{context}` with no context set, an alias that collides with another selector, or a misspelled key all fail with a message naming the file and the LLM.
 

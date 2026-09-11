@@ -12,7 +12,7 @@ The latest 0.x release receives security fixes. Older versions are not supported
 
 ## What aski can access
 
-aski is a CLI that runs locally on your machine. It reads one configuration file — `$ASKI_CONFIG`, or `$XDG_CONFIG_HOME/aski/config.toml`, or `~/.config/aski/config.toml` — and reads standard input when standard input is a pipe. It then runs the program that configuration file names, passing your question as a command-line argument.
+aski is a CLI that runs locally on your machine. It reads one configuration file — `$ASKI_CONFIG`, or `$XDG_CONFIG_HOME/aski/config.toml`, or `~/.config/aski/config.toml` — and reads standard input when standard input is a pipe, unless `--no-stdin` refuses it. It then runs the program that configuration file names, passing your question as a command-line argument.
 
 That is the security-relevant fact about aski: **the configuration file names a program to execute.** Anyone who can write to it can make aski run anything your operating-system user can run. Treat it the way you treat `~/.bashrc` or a shell alias file, and do not source one you did not write. aski does reduce the blast radius of a *question* — the argument vector is built directly and handed to `execve`, with no shell in between, so nothing in the text you type is interpreted as a shell metacharacter, a redirection, or a second command.
 

@@ -26,7 +26,10 @@ LLM is a table in a TOML config file naming the argv that puts that
 LLM in one-shot mode, together with any standing context to send
 along, so adding one is configuration rather than code. The first
 argument selects an LLM when it names one, and is the first word of
-the question when it does not."""
+the question when it does not. For scripts, which cannot rely on that
+guess, flags name the LLM outright, bound the wait, refuse standard
+input, and override the standing context, and the exit codes follow
+timeout(1)."""
 section = "utils"
 priority = "optional"
 depends = "libc6, libgcc-s1"
