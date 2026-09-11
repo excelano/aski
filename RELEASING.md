@@ -8,11 +8,10 @@ carries what is true of aski and not of its siblings.
 | | |
 |---|---|
 | Loop | cargo-dist |
-| Version lives in | `version` in `Cargo.toml` |
+| Version lives in | `Cargo.toml` |
 | `apt-ship` argument | `aski` |
-| crate | `aski` |
-| winget package | none |
-| Windows asset | none |
+| Packages per release | 2, amd64 arm64 |
+| crates | `aski` |
 
 **The crate, the command, the Homebrew formula, and the apt package are all
 `aski`** — one name everywhere. cargo-dist's tarballs and installer are named
