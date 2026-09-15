@@ -42,20 +42,6 @@ Then install it, so `brew upgrade` keeps it current:
 brew install aski
 ```
 
-### Prebuilt binary (Linux and macOS)
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/excelano/aski/main/install.sh | sh
-```
-
-The installer downloads the right tarball for your platform from the GitHub release, verifies its checksum, and drops the binary into `~/.cargo/bin`. If `aski` isn't found on your `PATH` afterward, ensure `~/.cargo/bin` is on it. Releases also ship raw tarballs (`aski-*.tar.xz`) for manual installation. To uninstall:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/excelano/aski/main/uninstall.sh | sh
-```
-
-That removes the binary and leaves your config file alone.
-
 ### From crates.io
 
 ```sh
